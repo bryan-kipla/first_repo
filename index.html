@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Basic Gambling Demo</title>
+    <style>
+        :root { --bg:#0b1221; --card:#0f1b2e; --accent:#f5b259; --muted:#9fb0c8; color-scheme: dark; }
+        body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#071025,#0b1221); color:white; }
+        header { padding:20px; text-align:center; background:linear-gradient(90deg, rgba(255,255,255,0.02), transparent); box-shadow:0 1px 0 rgba(255,255,255,0.02) inset; }
+        .container { max-width:980px; margin:24px auto; padding:16px; }
+        .grid { display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+        .card { background:var(--card); padding:16px; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.6); }
+        h1 { margin:0; font-size:1.4rem; color:var(--accent); }
+        .balance { font-weight:700; font-size:1.1rem; color:var(--muted); margin-top:8px; }
+        button { background:var(--accent); color:#09202a; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+        .small { font-size:0.9rem; color:var(--muted); }
+        .game { display:flex; flex-direction:column; gap:12px; }
+        .slot-reels { display:flex; gap:8px; justify-content:center; font-size:2.5rem; }
+        .dice { font-size:3rem; text-align:center; }
+        .controls { display:flex; gap:8px; flex-wrap:wrap; }
+        footer { margin-top:18px; text-align:center; font-size:0.85rem; color:var(--muted); }
+        .notice { background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; font-size:0.9rem; }
+        input[type="number"] { width:100px; padding:6px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Simple Casino Demo</h1>
+        <div class="small">For learning/demo only — no real money.</div>
+    </header>
+
+    <main class="container">
+        <div class="grid">
+            <section class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div class="small">Player</div>
+                        <div class="balance" id="balance">$1000</div>
+                    </div>
+                    <div>
+                        <div class="small">Controls</div>
+                        <div class="controls">
+                            <input id="bet" type="number" min="1" value="10" />
+                            <button id="addFunds">+100</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border:none;height:1px;background:rgba(255,255,255,0.03);margin:12px 0;">
+
+                <div class="game">
+                    <!-- Slot Machine -->
+                    <div class="card" style="background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);">
+                        <div class="small">Slot Machine (3 reels)</div>
+                        <div class="slot-reels" id="reels">🍒 🍋 ⭐</div>
+                        <div style="display:flex;gap:8px;justify-content:center;">
+                            <button id="spin">Spin</button>
+                            <button id="auto" title="Auto spins 5x">Auto x5</button>
+                        </div>
+                        <div class="small" id="slotResult"></div>
+                    </div>
+
+                    <!-- Dice Roll -->
+                    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <div class="small">Dice Roll (1-6)</div>
+                            <div class="dice" id="dice">🎲</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <button id="roll">Roll</button>
+                            <div class="small">Bet pays 5x on roll 6</div>
+                        </div>
+                        <div class="small" id="diceResult"></div>
+                    </div>
+
+                    <div class="notice">
+                        Responsible play: This is a static demo. No accounts, no real money. Odds are illustrative.
+                    </div>
+                </div>
+            </section>
+
+            <aside class="card">
+                <div class="small">Rules & Payouts</div>
+                <ul class="small" style="margin-top:8px;line-height:1.6;">
+                    <li>Slots: 3 matching symbols pays 10x, two matching pays 2x.</li>
+                    <li>Dice: rolling a 6 pays 5x, otherwise you lose the bet.</li>
+                </ul>
+
+                <hr style="border:none;height:1px;background:rgba(255,255,255,0.03);margin:12px 0;">
+
+                <div style="display:flex;gap:8px;">
+                    <button id="reset">Reset</button>
+                    <button id="help">Help</button>
+                </div>
+
+                <footer>
+                    Demo created for learning. Odds are simplified.
+                </footer>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        // Simple client-side demo logic only
+        const balanceEl = document.getElementById('balance');
+        const betInput = document.getElementById('bet');
+        const reelsEl = document.getElementById('reels');
+        const slotResult = document.getElementById('slotResult');
+        const spinBtn = document.getElementById('spin');
+        const autoBtn = document.getElementById('auto');
+        const rollBtn = document.getElementById('roll');
+        const diceEl = document.getElementById('dice');
+        const diceResult = document.getElementById('diceResult');
+        const addFunds = document.getElementById('addFunds');
+        const resetBtn = document.getElementById('reset');
+        const helpBtn = document.getElementById('help');
+
+        const symbols = ['🍒','🍋','⭐','🔔','7️⃣'];
+        function getBalance() { return Number(balanceEl.textContent.replace(/[^0-9.-]+/g,"")); }
+        function setBalance(v){ balanceEl.textContent = '$' + Math.max(0, Math.round(v)); }
+
+        function placeBet(){
+            const bet = Math.max(1, Number(betInput.value) || 1);
+            if (getBalance() < bet){ alert('Insufficient balance'); return null; }
+            setBalance(getBalance() - bet);
+            return bet;
+        }
+
+        function spinOnce(){
+            const bet = placeBet();
+            if (bet === null) return;
+            // random reels
+            const r = Array.from({length:3}, ()=>symbols[Math.floor(Math.random()*symbols.length)]);
+            reelsEl.textContent = r.join(' ');
+            // evaluate
+            const counts = {};
+            r.forEach(s=>counts[s]=(counts[s]||0)+1);
+            let payout = 0;
+            if (Object.values(counts).includes(3)) payout = bet * 10;
+            else if (Object.values(counts).includes(2)) payout = bet * 2;
+            const net = payout;
+            if (net>0){ setBalance(getBalance() + net); slotResult.textContent = `You won $${net}!`; }
+            else slotResult.textContent = `No win.`;
+        }
+
+        function autoSpin(times=5, delay=600){
+            let i=0;
+            const id = setInterval(()=> {
+                spinOnce();
+                i++;
+                if (i>=times) clearInterval(id);
+            }, delay);
+        }
+
+        function rollDice(){
+            const bet = placeBet();
+            if (bet === null) return;
+            const val = Math.floor(Math.random()*6)+1;
+            diceEl.textContent = String.fromCodePoint(0x1f3b2) + ' ' + val;
+            if (val === 6){
+                const payout = bet * 5;
+                setBalance(getBalance() + payout);
+                diceResult.textContent = `Rolled 6 — you win $${payout}!`;
+            } else {
+                diceResult.textContent = `Rolled ${val} — you lose.`;
+            }
+        }
+
+        // event listeners
+        spinBtn.addEventListener('click', spinOnce);
+        autoBtn.addEventListener('click', ()=>autoSpin(5));
+        rollBtn.addEventListener('click', rollDice);
+        addFunds.addEventListener('click', ()=> setBalance(getBalance()+100));
+        resetBtn.addEventListener('click', ()=> { setBalance(1000); slotResult.textContent=''; diceResult.textContent=''; reelsEl.textContent='🍒 🍋 ⭐'; diceEl.textContent='🎲'; });
+        helpBtn.addEventListener('click', ()=> alert('This is a demo. No accounts or real money. Use the bet box and press Spin or Roll.'));
+
+        // initialize
+        setBalance(1000);
+    </script>
+</body>
+</html>
